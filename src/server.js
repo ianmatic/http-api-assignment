@@ -1,61 +1,38 @@
 const http = require('http');
-const fs = require('fs');
 const query = require('querystring');
+const url = require('url');
 const htmlHandler = require('./htmlResponses.js');
 const jsonHandler = require('./jsonResponses.js');
-const url = require('url');
 
 const port = process.env.PORT || process.env.NODE_PORT || 3000;
 
-const handlePost = (request, response, parsedUrl) => {
-  if (parsedUrl.pathname === '/addUser') {
-    const res = response;
-
-    const body = [];
-
-    request.on('error', (err) => {
-      console.dir(err);
-      res.statusCode = 400;
-      res.end();
-    });
-
-    request.on('data', (chunk) => {
-      body.push(chunk);
-    });
-
-    request.on('end', () => {
-      const bodyString = Buffer.concat(body).toString();
-      const bodyParams = query.parse(bodyString);
-
-      jsonHandler.addUser(request, res, bodyParams);
-    });
-  }
+// Various urls that server can handle
+const urlStruct = {
+  '/': htmlHandler.getIndex,
+  '/style.css': htmlHandler.getCSS,
+  '/success': jsonHandler.success,
+  '/badRequest': jsonHandler.badRequest,
+  '/unauthorized': jsonHandler.unauthorized,
+  '/forbidden': jsonHandler.forbidden,
+  '/internal': jsonHandler.internal,
+  '/notImplemented': jsonHandler.notImplemented,
+  notFound: jsonHandler.notFound,
 };
 
-const handleGet = (request, response, parsedUrl) => {
-  if (parsedUrl.pathname === '/style.css') {
-    htmlHandler.getCSS(request, response);
-  } else if (parsedUrl.pathname === '/getUsers') {
-    jsonHandler.getUsers(request, response);
-  } else {
-    htmlHandler.getIndex(request, response);
-  }
-};
-
+// Function that handles requests from client
 const onRequest = (request, response) => {
-  console.log(request.url);
-
   const parsedUrl = url.parse(request.url);
+  const acceptedTypes = request.headers.accept.split(',');
+  const params = query.parse(parsedUrl.query);
 
-  if (request.method === 'POST') {
-    handlePost(request, response, parsedUrl);
+  // add additional params
+  if (urlStruct[parsedUrl.pathname]) {
+    urlStruct[parsedUrl.pathname](request, response, acceptedTypes, params);
   } else {
-    handleGet(request, response, parsedUrl);
+    urlStruct.notFound(request, response, acceptedTypes, params);
   }
 };
 
 http.createServer(onRequest).listen(port);
 
 console.log(`Listening on 127.0.0.1: ${port}`);
-
-

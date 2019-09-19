@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-let index = fs.readFileSync(`${__dirname}/../client/client.html`);
+const index = fs.readFileSync(`${__dirname}/../client/client.html`);
 const css = fs.readFileSync(`${__dirname}/../client/style.css`);
 
 const getIndex = (request, response) => {
@@ -15,9 +15,5 @@ const getCSS = (request, response) => {
   response.end();
 };
 
-const setIndex = (value) => {
-  index = value;
-};
 module.exports.getIndex = getIndex;
-module.exports.setIndex = setIndex;
 module.exports.getCSS = getCSS;

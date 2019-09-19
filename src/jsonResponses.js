@@ -1,79 +1,117 @@
-const users = {};
 
-const respondJSON = (request, response, status, object) => {
-  response.writeHead(status, { 'Content-Type': 'application/json' });
-  response.write(JSON.stringify(object));
-  response.end();
-};
+// Function that sends the respons object back to the client
+const respondObj = (request, response, status, object, type) => {
+  let responseObj;
+  let responseType;
 
-const respondJSONMeta = (request, response, status) => {
-  response.writeHead(status, { 'Content-Type': 'application/json' });
-  response.end();
-};
+  // Build XML/JSON objects
+  if (type[0] === 'text/xml') {
+    responseObj = '<response>';
+    responseObj = `${responseObj} <message>${object.message}</message>`;
+    responseObj = `${responseObj} <id>${object.id}</id>`;
+    responseObj = `${responseObj} </response>`;
 
-const getUsers = (request, response) => {
-  const responseJSON = {
-    users,
-  };
-
-  respondJSON(request, response, 200, responseJSON);
-};
-
-const addUser = (request, response, body) => {
-  const responseJSON = {
-    message: 'Name and age are both required.',
-  };
-
-  if (!body.name || !body.age) {
-    responseJSON.id = 'missingParams';
-    return respondJSON(request, response, 400, respondJSON);
-  }
-
-  let responseCode = 201;
-
-  if (users[body.name]) {
-    responseCode = 204;
+    responseType = 'text/xml';
   } else {
-    users[body.name] = {};
+    responseObj = JSON.stringify(object);
+
+    responseType = 'application/json';
   }
 
-  users[body.name].name = body.name;
-  users[body.name].age = body.age;
+  // Send back response object of appropriate type to client
+  response.writeHead(status, { 'Content-Type': responseType });
+  response.write(responseObj);
+  response.end();
+};
 
-  if (responseCode === 201) {
-    responseJSON.message = 'Created Successfully';
-    return respondJSON(request, response, responseCode, responseJSON);
+// 200 - Success
+const success = (request, response, type) => {
+  const responseJSON = {
+    message: 'This is a successful response.',
+  };
+  respondObj(request, response, 200, responseJSON, type);
+};
+
+// 400 - Bad Request
+const badRequest = (request, response, type, params) => {
+  const responseJSON = {
+    message: 'This request has the required parameters.',
+  };
+
+  // Check '?valid=true' param
+  if (!params.valid || params.valid !== 'true') {
+    responseJSON.message = 'Missing valid query parameter set to true.';
+    responseJSON.id = 'badRequest';
+
+    respondObj(request, response, 400, responseJSON, type);
+  } else {
+    respondObj(request, response, 200, responseJSON, type);
   }
-
-  return respondJSONMeta(request, response, responseCode);
 };
 
-const success = (request, response) => {
+// 401 - Unauthorized
+const unauthorized = (request, response, type, params) => {
   const responseJSON = {
-    message: 'This is a successful response',
+    message: 'You have successfully viewed the content.',
   };
 
-  respondJSON(request, response, 200, responseJSON);
+  // Check '?loggedIn=yes' param
+  if (!params.loggedIn || params.loggedIn !== 'yes') {
+    responseJSON.message = 'Missing loggedIn query parameter set to yes.';
+    responseJSON.id = 'unauthorized';
+
+    return respondObj(request, response, 401, responseJSON, type);
+  }
+  return respondObj(request, response, 200, responseJSON, type);
 };
 
-const badRequest = (request, response, params) => {
+// 403 - Forbidden
+const forbidden = (request, response, type) => {
   const responseJSON = {
-    message: 'This request has the required parameters',
+    message: 'You do not have access to this content.',
+    id: 'forbidden',
   };
+
+  respondObj(request, response, 403, responseJSON, type);
 };
 
-const notFound = (request, response) => {
+// 500 - Internal
+const internal = (request, response, type) => {
+  const responseJSON = {
+    message: 'Interal Server Error. Something went wrong.',
+    id: 'internalError',
+  };
+
+  respondObj(request, response, 500, responseJSON, type);
+};
+
+// 501 - Not Implemented
+const notImplemented = (request, response, type) => {
+  const responseJSON = {
+    message: 'A get request for this page has not been implemented yet. Check again later for updated content.',
+    id: 'notImplemented',
+  };
+
+  respondObj(request, response, 501, responseJSON, type);
+};
+
+// 404 - Not Found
+const notFound = (request, response, type) => {
   const responseJSON = {
     message: 'The page you are looking for was not found.',
     id: 'notFound',
   };
+
+  respondObj(request, response, 404, responseJSON, type);
 };
 
 
 module.exports = {
-  success,
-  badRequest,
-  notFound,
-  getUsers,
-  addUser,
+  success, // 200
+  badRequest, // 400
+  unauthorized, // 401
+  forbidden, // 403
+  internal, // 500
+  notImplemented, // 501
+  notFound, // 404
 };

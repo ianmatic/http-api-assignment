@@ -7,77 +7,62 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
   <script type="text/babel">
-const parseJSON = (xhr, content) => {
-      const obj = JSON.parse(xhr.response);
-      console.dir(obj);
-      
-      if(obj.message) {
-        const p = document.createElement('p');
-        p.textContent = `Message: ${obj.message}`;
-        content.appendChild(p);
-      }
-      
-      if(obj.users) {
-        const userList = document.createElement('p');
-        const users = JSON.stringify(obj.users);
-        userList.textContent = users;
-        content.appendChild(userList);
-      }
-    };
-    const handleResponse = (xhr) => {
-      const content = document.querySelector('#content');
-      
-      //check the status code
-      switch(xhr.status) {
-        case 200: //success
-          content.innerHTML = `<b>Success</b>`;
-          break;
-        case 201: //created
-          content.innerHTML = '<b>Create</b>';
-          break;
-        case 204: //updated (no response back from server)
-          content.innerHTML = '<b>Updated (No Content)</b>';
-          return;
-        case 400: //bad request
-          content.innerHTML = `<b>Bad Request</b>`;
-          break;
-        default: //any other status code
-          content.innerHTML = `Error code not implemented by client.`;
-          break;
-      }
-      parseJSON(xhr, content);
-    };
-    const sendPost = (e, nameForm) => {
 
-      nameForm = document.querySelector("#page");
-      const nameAction = nameForm.getAttribute('action');
-      const nameMethod = nameForm.getAttribute('method');
-      
-      const nameField = nameForm.querySelector('#page');
-      const ageField = nameForm.querySelector('#type');
-      
+    // Function that handles response sent back from server
+    const handleResponse = (xhr) => {
+
+      // get the html elements
+      const pElem = document.querySelector('#content p');
+      const hElem = document.querySelector('#content h3');
+
+      // take out the '/'' and make the first char uppercase
+      let requestedPage = document.querySelector("#page").value.replace('/','');
+      requestedPage = requestedPage.charAt(0).toUpperCase() + requestedPage.slice(1);
+
+      // get response type
+      const responseType = xhr.getResponseHeader('content-type');
+
+      // handle response type appropriately
+      if (responseType === 'application/json') {
+        const json = JSON.parse(xhr.response);
+        console.log(json);
+
+        hElem.innerHTML = requestedPage;
+        pElem.innerHTML = `Message: ${json.message}`;
+      } 
+      else if (responseType === 'text/xml') {
+        console.log(xhr.responseXML);
+
+        hElem.innerHTML = requestedPage;
+        pElem.textContent = `Message: ${xhr.responseXML.querySelector('message').textContent}`;
+      }
+    };
+
+    // Send Request function
+    const sendGet = (url, format) => {
       const xhr = new XMLHttpRequest();
-      xhr.open(nameMethod, nameAction);
+      xhr.open('GET', url);
 
       xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-      xhr.setRequestHeader ('Accept', 'application/json');
+
+      // Handle both JSON/XML response types
+      xhr.setRequestHeader ('Accept', format);
       
+      // Handle response once we receive it
       xhr.onload = () => handleResponse(xhr);
     
-      const formData = `name=${nameField.value}&age=${ageField.value}`;
-      
-      xhr.send(formData);
-    
-      e.preventDefault();
-
-      return false;
+      // Send Request
+      xhr.send();
     };
-    const init = () => {
-      const nameForm = document.querySelector('#send');
+
+    const init = () => {  
+      // Make some dom elements    
+      document.querySelector('#content').appendChild(document.createElement('h3'));
+      document.querySelector('#content').appendChild(document.createElement('p'));
       
-      const addUser = (e) => sendPost(e, nameForm);
-      
-      nameForm.addEventListener('click', addUser);
+      // When the user clicks on the send button, send GET request
+      const sendRequest = () => sendGet(document.querySelector("#page").value, document.querySelector("#type").value);
+      document.querySelector('#send').addEventListener('click', sendRequest);
     };
     window.onload = init;
   </script>
